@@ -57,6 +57,8 @@ export ENV_UUID_PKEY_COLNAME=related
 export ENV_SORTED_UUID_FILENAME=sample.d/sorted-uuids.dat
 export ENV_SCHEMA_FILENAME=./sample.d/output.avsc
 
+export ENV_ALLOW_MISSING_UUID=false
+
 cat sample.d/sample.avro |
 	./avro-uuid2serial |
 	rq \
