@@ -2,6 +2,7 @@ package uuid2int
 
 import (
 	"errors"
+	"fmt"
 	"iter"
 
 	gu "github.com/google/uuid"
@@ -12,6 +13,8 @@ var (
 	ErrInvalidUuid error = errors.New("invalid uuid")
 
 	ErrUnexpectedUuid error = errors.New("unexpected uuid")
+
+	ErrAnyNil error = errors.New("nil any got")
 )
 
 type UuidMapInt map[gu.UUID]int32
@@ -28,27 +31,59 @@ func AnyToUuid(
 			copy(buf[:], t)
 			return buf, nil
 		}
+		return gu.Nil, fmt.Errorf("%w: bytes=%v", ErrInvalidUuid, t)
+	case map[string]any:
+		for _, val := range t {
+			return AnyToUuid(val)
+		}
+		return gu.Nil, fmt.Errorf("%w: map=%v", ErrInvalidUuid, t)
+	case string:
+		return gu.Parse(t)
+	case nil:
+		return gu.Nil, ErrAnyNil
 	default:
 	}
 
-	return buf, ErrInvalidUuid
+	return gu.Nil, fmt.Errorf("%w: any=%v", ErrInvalidUuid, i)
+}
+
+func MapToUuidAllowMissing(
+	m map[string]any,
+	uuidColumnName string,
+	allowMissing bool,
+) (gu.UUID, error) {
+	var ret gu.UUID
+	raw, found := m[uuidColumnName]
+	if !found {
+		if allowMissing {
+			return gu.Nil, nil
+		}
+		return ret, ErrUuidMissing
+	}
+
+	u, e := AnyToUuid(raw)
+	if nil == e {
+		return u, nil
+	}
+
+	if allowMissing && ErrAnyNil == e {
+		return gu.Nil, nil
+	}
+
+	return gu.Nil, e
 }
 
 func MapToUuid(
 	m map[string]any,
 	uuidColumnName string,
 ) (gu.UUID, error) {
-	var ret gu.UUID
-	raw, found := m[uuidColumnName]
-	if !found {
-		return ret, ErrUuidMissing
-	}
-	return AnyToUuid(raw)
+	return MapToUuidAllowMissing(m, uuidColumnName, false)
 }
 
-func (m UuidMapInt) MapsToMaps(
+func (m UuidMapInt) MapsToMapsAllowMissing(
 	original iter.Seq2[map[string]any, error],
 	uuidColumnName string,
+	allowMissingUuid bool,
 ) iter.Seq2[map[string]any, error] {
 	return func(yield func(map[string]any, error) bool) {
 		buf := map[string]any{}
@@ -65,7 +100,11 @@ func (m UuidMapInt) MapsToMaps(
 				buf[key] = val
 			}
 
-			id, e := MapToUuid(row, uuidColumnName)
+			id, e := MapToUuidAllowMissing(
+				row,
+				uuidColumnName,
+				allowMissingUuid,
+			)
 			if nil != e {
 				yield(buf, e)
 				return
@@ -73,8 +112,11 @@ func (m UuidMapInt) MapsToMaps(
 
 			mapd, found := m[id]
 			if !found {
-				yield(buf, ErrUnexpectedUuid)
-				return
+				var accept bool = allowMissingUuid && id == gu.Nil
+				if !accept {
+					yield(buf, ErrUnexpectedUuid)
+					return
+				}
 			}
 
 			buf[uuidColumnName] = mapd
@@ -86,14 +128,28 @@ func (m UuidMapInt) MapsToMaps(
 	}
 }
 
-func (m UuidMapInt) ColumnNameToMapd(
+func (m UuidMapInt) MapsToMaps(
+	original iter.Seq2[map[string]any, error],
+	uuidColumnName string,
+) iter.Seq2[map[string]any, error] {
+	return m.MapsToMapsAllowMissing(original, uuidColumnName, false)
+}
+
+func (m UuidMapInt) ColumnNameToMapdAllowMissing(
 	colname string,
+	allowMissingUuid bool,
 ) func(iter.Seq2[map[string]any, error]) iter.Seq2[map[string]any, error] {
 	return func(
 		original iter.Seq2[map[string]any, error],
 	) iter.Seq2[map[string]any, error] {
-		return m.MapsToMaps(original, colname)
+		return m.MapsToMapsAllowMissing(original, colname, allowMissingUuid)
 	}
+}
+
+func (m UuidMapInt) ColumnNameToMapd(
+	colname string,
+) func(iter.Seq2[map[string]any, error]) iter.Seq2[map[string]any, error] {
+	return m.ColumnNameToMapdAllowMissing(colname, false)
 }
 
 const BlobSizeMaxDefault int = 1048576
