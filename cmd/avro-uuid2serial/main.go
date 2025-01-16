@@ -7,6 +7,7 @@ import (
 	"iter"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 
 	gu "github.com/google/uuid"
@@ -53,9 +54,34 @@ var uuid2int IO[ui.UuidMapInt] = Bind(
 	sm.SortedUuidsToMap,
 )
 
-var mapd IO[iter.Seq2[map[string]any, error]] = Bind(
+type Config struct {
+	UuidColumnName   string
+	AllowMissingUuid bool
+}
+
+var allowMissingUuid IO[bool] = Bind(
+	EnvValByKey("ENV_ALLOW_MISSING_UUID"),
+	Lift(strconv.ParseBool),
+).Or(Of(false))
+
+var config IO[Config] = Bind(
 	uuidColName,
-	func(colname string) IO[iter.Seq2[map[string]any, error]] {
+	func(colname string) IO[Config] {
+		return Bind(
+			allowMissingUuid,
+			Lift(func(allowMissing bool) (Config, error) {
+				return Config{
+					UuidColumnName:   colname,
+					AllowMissingUuid: allowMissing,
+				}, nil
+			}),
+		)
+	},
+)
+
+var mapd IO[iter.Seq2[map[string]any, error]] = Bind(
+	config,
+	func(cfg Config) IO[iter.Seq2[map[string]any, error]] {
 		return Bind(
 			uuid2int,
 			func(umi ui.UuidMapInt) IO[iter.Seq2[map[string]any, error]] {
@@ -64,7 +90,10 @@ var mapd IO[iter.Seq2[map[string]any, error]] = Bind(
 					Lift(func(
 						original iter.Seq2[map[string]any, error],
 					) (iter.Seq2[map[string]any, error], error) {
-						return umi.ColumnNameToMapd(colname)(original), nil
+						return umi.ColumnNameToMapdAllowMissing(
+							cfg.UuidColumnName,
+							cfg.AllowMissingUuid,
+						)(original), nil
 					}),
 				)
 			},
