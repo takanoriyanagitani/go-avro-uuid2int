@@ -19,15 +19,17 @@ var (
 
 type UuidMapInt map[gu.UUID]int32
 
+const UuidSize int = 16
+
 func AnyToUuid(
 	i any,
 ) (gu.UUID, error) {
 	var buf gu.UUID
 	switch t := i.(type) {
-	case [16]byte:
+	case [UuidSize]byte:
 		return t, nil
 	case []byte:
-		if 16 == len(t) {
+		if UuidSize == len(t) {
 			copy(buf[:], t)
 			return buf, nil
 		}

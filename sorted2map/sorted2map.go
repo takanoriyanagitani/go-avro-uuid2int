@@ -5,7 +5,6 @@ import (
 	"iter"
 
 	gu "github.com/google/uuid"
-
 	ui "github.com/takanoriyanagitani/go-avro-uuid2int"
 	. "github.com/takanoriyanagitani/go-avro-uuid2int/util"
 )

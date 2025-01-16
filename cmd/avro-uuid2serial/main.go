@@ -11,16 +11,12 @@ import (
 	"strings"
 
 	gu "github.com/google/uuid"
-
 	ui "github.com/takanoriyanagitani/go-avro-uuid2int"
-	. "github.com/takanoriyanagitani/go-avro-uuid2int/util"
-
-	sm "github.com/takanoriyanagitani/go-avro-uuid2int/sorted2map"
-
-	us "github.com/takanoriyanagitani/go-avro-uuid2int/uuid2int/sorted2iter"
-
 	dh "github.com/takanoriyanagitani/go-avro-uuid2int/avro/dec/hamba"
 	eh "github.com/takanoriyanagitani/go-avro-uuid2int/avro/enc/hamba"
+	sm "github.com/takanoriyanagitani/go-avro-uuid2int/sorted2map"
+	. "github.com/takanoriyanagitani/go-avro-uuid2int/util"
+	us "github.com/takanoriyanagitani/go-avro-uuid2int/uuid2int/sorted2iter"
 )
 
 var EnvValByKey func(string) IO[string] = Lift(

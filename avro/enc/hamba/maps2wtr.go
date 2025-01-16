@@ -8,7 +8,6 @@ import (
 
 	ha "github.com/hamba/avro/v2"
 	ho "github.com/hamba/avro/v2/ocf"
-
 	se "github.com/takanoriyanagitani/go-avro-uuid2int"
 	. "github.com/takanoriyanagitani/go-avro-uuid2int/util"
 )
